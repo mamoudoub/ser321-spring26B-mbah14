@@ -8,3 +8,6 @@ bin/
 _MACOSX/
 
 *.log
+
+.gradle/
+build/
