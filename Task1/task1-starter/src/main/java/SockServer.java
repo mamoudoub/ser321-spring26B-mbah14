@@ -170,25 +170,32 @@ public class SockServer {
     return res;
   }
 
-  
-  // handles string concatenation
-  static JSONObject concat(JSONObject req) {
-    System.out.println("Concatenation request: " + req.toString());
-    JSONObject res = testField(req, "string1");
-    if (!res.getBoolean("ok")) {
-      return res;
+
+    // handles string concatenation
+    static JSONObject concat(JSONObject req) {
+        System.out.println("Concatenation request: " + req.toString());
+        //============= FIXED BEGINS ======
+        JSONObject res1 = testField(req, "string1");
+        if (!res1.getBoolean("ok")) {
+            return res1;
+        }
+
+        JSONObject res2 = testField(req, "string2");
+        if (!res2.getBoolean("ok")) {
+            return res2;
+        }
+
+        JSONObject res = new JSONObject();
+        res.put("ok", true);
+        res.put("type", "stringconcatenation"); // match protocol
+        //=========== FIXED ENDS =======
+
+        String str1 = req.getString("string1");
+        String str2 = req.getString("string2");
+        res.put("combined", str1 + str2);
+
+        return res;
     }
-
-    res = new JSONObject();
-    res.put("ok", true);
-    res.put("type", "concat");
-
-    String str1 = req.getString("string1");
-    String str2 = req.getString("string2");
-    res.put("combined", str1 + str2);
-
-    return res;
-  }
 
   // handles the calculatemany request with multiple operations
   static JSONObject calculatemany(JSONObject req){

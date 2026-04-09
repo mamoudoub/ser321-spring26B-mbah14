@@ -65,15 +65,17 @@ class SockClient {
             String num2 = scanner.nextLine();
             json.put("num2", num2);
             break;
-          case 3:
-            System.out.println("Choose string concatenation, enter first string:");
-            String str1 = scanner.nextLine();
-            System.out.println("Enter second string:");
-            String str2 = scanner.nextLine();
-            json.put("type", "stringconcatenation");
-            json.put("str1", str1);
-            json.put("string2", str2);
-            break;
+            case 3:
+                System.out.println("Choose string concatenation, enter first string:");
+                String str1 = scanner.nextLine();
+                System.out.println("Enter second string:");
+                String str2 = scanner.nextLine();
+                //============= FIXED BEGINS ======
+                json.put("type", "stringconcatenation");
+                json.put("string1", str1);
+                json.put("string2", str2);
+                //=========== FIXED ENDS =======
+                break;
             // TODO: implement currency (4) or playlist (5) for Part C
         }
         if(!requesting) {
