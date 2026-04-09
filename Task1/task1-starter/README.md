@@ -139,7 +139,95 @@ Error response:
 4. Document ALL possible error cases (hint: there are at least 4 different error cases)
 
 YOUR PROTOCOL DOCUMENTATION GOES HERE
+### ========== ANSWER STARTS  ============= ###
+Request:
 
+    {
+        "type": "calculatemany", 
+        "numList": [<int>],  -- array of integers to operate on, e.g. [1,2,3,4]
+        "operation": <String> -- operation to perform: "add", "multiply", or "average"
+    }
+
+General response:
+
+    {
+        "type": "calculatemany",
+        "ok": <bool>, -- true if operation succeeds, false otherwise
+        "operation": <String>, -- echoes the requested operation
+        "count": <int>, -- number of integers in numList
+        "sum": <int>, -- present if operation is "add"
+        "product": <int>, -- present if operation is "multiply"
+        "average": <Number>, -- present if operation is "average", rounded to 2 decimals
+        "message": <String> -- error message if ok false
+    }
+
+Success responses:
+Add operation:
+
+    {
+        "type": "calculatemany",
+        "ok": true,
+        "operation": "add",
+        "count": 4,
+        "sum": 10
+    }
+
+Multiply operation:
+
+    {
+        "type": "calculatemany",
+        "ok": true,
+        "operation": "multiply",
+        "count": 4,
+        "product": 24
+    }
+
+Average operation:
+
+    {
+        "type": "calculatemany",
+        "ok": true,
+        "operation": "average",
+        "count": 4,
+        "average": 2.50
+    }
+
+Error responses:
+.1. Missing numList field:
+
+    {
+        "ok": false,
+        "message": "Field numList does not exist in request"
+    }
+
+.2. Missing operation field:
+
+    {
+        "ok": false,
+        "message": "Field operation does not exist in request"
+    }
+
+.3. Empty numList array:
+
+    {
+        "ok": false,
+        "message": "Array 'numList' cannot be empty"
+    }
+
+.4. Invalid operation:
+
+    {
+        "ok": false,
+        "message": "Invalid operation 'subtract'. Valid operations: add, multiply, average"
+    }
+
+.5. Non-integer value in numList:
+
+    {
+        "ok": false,
+        "message": "Values in numList must be integers"
+    }
+### ========== ANSWER ENDS  ============== ###
 ### StringConcatenation: ###
 This service will concatenate two strings provided by the client. The client will send a request to the server with two strings to be concatenated.
 The server will concatenate the strings and send back the result to the client.
