@@ -1,0 +1,19 @@
+# ZIP files
+*.zip
+
+# Mac OS files
+.DS_Store
+__MACOSX/
+
+# Gradle
+.gradle/
+**/.gradle/
+build/
+
+# IntelliJ / IDE
+.idea/
+*.iml
+out/
+
+# Logs
+*.log
