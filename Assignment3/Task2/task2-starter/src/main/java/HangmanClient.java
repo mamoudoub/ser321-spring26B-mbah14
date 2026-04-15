@@ -29,6 +29,10 @@ public class HangmanClient {
     static boolean hasName = false;
     static String playerName = "";
 
+    static String currentWordDisplay = "";
+    static int currentMisses = 0;
+    static int currentPoints = 0;
+
     public static void main(String[] args) {
         if (args.length != 2) {
             System.out.println("Expected arguments: <host(String)> <port(int)>");
@@ -104,15 +108,17 @@ public class HangmanClient {
 
         String choice = scanner.nextLine().trim();
         switch (choice) {
+            //========= IMPLEMENTATION STARTS =====
             case "1":
                 startGame();
                 return true;
             case "2":
-                // TODO: implement me
+                viewLeaderboard();
                 return true;
             case "3":
                 quit();
                 return false;
+            //========= IMPLEMENTATION ENDS =====
             default:
                 System.out.println("Invalid choice. Please try again.");
                 return true;
@@ -137,15 +143,15 @@ public class HangmanClient {
         System.out.print("Your input: ");
         String input = scanner.nextLine().trim();
 
-        // Handle special commands
+        //========= IMPLEMENTATION STARTS =====
         if (input.equals("1")) {
-            // TODO: implement me
+            showGameState();
             return true;
         } else if (input.equals("2")) {
-            // TODO: implement me
+            showGuessedLetters();
             return true;
         } else if (input.equals("3")) {
-            // TODO: implement me
+            getHint();
             return true;
         } else if (input.equals("4")) {
             giveUp();
@@ -162,55 +168,25 @@ public class HangmanClient {
 
         // Single character = letter guess, multiple = word guess
         if (input.length() == 1) {
-            // TODO: implement me
+            guessLetter(input.charAt(0));
         } else {
-            // TODO: implement me
+            guessWord(input);
         }
-
         return true;
-    }
-
-    /**
-     * TODO: Implement the rest
-     * IMPORTANT: This should send a request to the server to end the game!
-     * Just setting inGame = false locally creates a state mismatch
-     * where the client thinks the game is over but the server still has it active.
-     *
-     * Proper implementation should:
-     * - Confirm with user
-     * - Send "give up" or "end game" (or similar) request to server
-     * - Server ends game, does not add to leaderboard
-     * - Server responds confirming game ended
-     * - Client sets inGame = false
-     */
-    static void giveUp() {
-        System.out.print("\nAre you sure you want to give up? (yes/no): ");
-        String confirm = scanner.nextLine().trim().toLowerCase();
-        if (confirm.equals("yes") || confirm.equals("y")) {
-            // TODO: Send request to server to properly end the game
-            inGame = false;
-            System.out.println("\nYou gave up! Returning to main menu...\n");
-            System.out.println("[TODO: This should notify the server to end the game properly]");
-        } else {
-            System.out.println("\nContinuing game...");
-        }
+        //========= IMPLEMENTATION ENDS =====
     }
 
     /**
      * EXAMPLE IMPLEMENTATION: Set player name
-     * This is provided as a complete example.
-     * Use this as a reference for implementing other methods.
      */
     static void setName() {
         System.out.print("\nEnter your name: ");
         String name = scanner.nextLine().trim();
 
-        // Create request according to YOUR protocol design
         JSONObject request = new JSONObject();
         request.put("type", "name");
         request.put("name", name);
 
-        // Send request and get response
         JSONObject response = sendRequest(request);
         if (response != null) {
             if (response.getBoolean("ok")) {
@@ -224,14 +200,119 @@ public class HangmanClient {
         }
     }
 
-    /**
-     * TODO: Implement start game
-     * Should send a start request to the server and handle the response
-     */
+    //========= IMPLEMENTATION STARTS =====
     static void startGame() {
-        System.out.println("\n[TODO: Implement start game - send start request to server]");
+        JSONObject request = new JSONObject();
+        request.put("type", "start");
+
+        JSONObject response = sendRequest(request);
+        if (response != null && response.getBoolean("ok")) {
+            inGame = true;
+            currentWordDisplay = response.getString("word_display");
+            currentMisses = response.getInt("misses");
+            System.out.println("\nNew game started!");
+            System.out.println(response.getString("hangman"));
+            System.out.println("Word: " + currentWordDisplay);
+        }
     }
 
+    static void showGameState() {
+        JSONObject request = new JSONObject();
+        request.put("type", "state");
+
+        JSONObject response = sendRequest(request);
+        if (response != null && response.getBoolean("ok")) {
+            currentWordDisplay = response.getString("word_display");
+            currentMisses = response.getInt("misses");
+            currentPoints = response.getInt("points");
+            System.out.println("\nCurrent State:");
+            System.out.println(response.getString("hangman"));
+            System.out.println("Word: " + currentWordDisplay);
+            System.out.println("Misses: " + currentMisses + ", Points: " + currentPoints);
+        }
+    }
+
+    static void showGuessedLetters() {
+        JSONObject request = new JSONObject();
+        request.put("type", "guessed");
+
+        JSONObject response = sendRequest(request);
+        if (response != null && response.getBoolean("ok")) {
+            System.out.println("\nGuessed Letters: " + response.getString("letters"));
+        }
+    }
+
+    static void getHint() {
+        JSONObject request = new JSONObject();
+        request.put("type", "hint");
+
+        JSONObject response = sendRequest(request);
+        if (response != null) {
+            if (response.getBoolean("ok")) {
+                currentWordDisplay = response.getString("word_display");
+                currentPoints = response.getInt("points");
+                System.out.println("\nHint revealed: " + response.getString("letter"));
+                System.out.println("Word: " + currentWordDisplay);
+                System.out.println("Points: " + currentPoints);
+            } else {
+                System.out.println("\n✗ " + response.getString("message"));
+            }
+        }
+    }
+
+    static void guessLetter(char letter) {
+        JSONObject request = new JSONObject();
+        request.put("type", "guess");
+        request.put("letter", String.valueOf(letter));
+
+        JSONObject response = sendRequest(request);
+        if (response != null && response.getBoolean("ok")) {
+            currentWordDisplay = response.getString("word_display");
+            currentMisses = response.getInt("misses");
+            currentPoints = response.getInt("points");
+            System.out.println("\nWord: " + currentWordDisplay);
+            System.out.println(response.getString("hangman"));
+            System.out.println("Misses: " + currentMisses + ", Points: " + currentPoints);
+            if (response.has("message")) {
+                System.out.println(response.getString("message"));
+                inGame = false;
+            }
+        } else if (response != null) {
+            System.out.println("✗ " + response.getString("message"));
+        }
+    }
+
+    static void guessWord(String word) {
+        System.out.println("\n[Word guesses are not fully implemented yet]");
+    }
+
+    static void viewLeaderboard() {
+        JSONObject request = new JSONObject();
+        request.put("type", "leaderboard");
+
+        JSONObject response = sendRequest(request);
+        if (response != null && response.getBoolean("ok")) {
+            System.out.println("\nLEADERBOARD:");
+            System.out.println(response.getString("leaderboard"));
+        }
+    }
+
+    static void giveUp() {
+        System.out.print("\nAre you sure you want to give up? (yes/no): ");
+        String confirm = scanner.nextLine().trim().toLowerCase();
+        if (confirm.equals("yes") || confirm.equals("y")) {
+            JSONObject request = new JSONObject();
+            request.put("type", "giveup");
+            JSONObject response = sendRequest(request);
+            if (response != null && response.getBoolean("ok")) {
+                System.out.println("\n" + response.getString("message"));
+            }
+            inGame = false;
+        } else {
+            System.out.println("\nContinuing game...");
+        }
+    }
+    //========= IMPLEMENTATION ENDS =====
 
     /**
      * Quit game

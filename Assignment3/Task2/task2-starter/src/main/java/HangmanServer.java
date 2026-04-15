@@ -103,11 +103,25 @@ public class HangmanServer {
                         continue;
                     }
 
+                    //========= IMPLEMENTATION STARTS =====
                     // Route to appropriate handler
                     String type = req.getString("type");
                     if (type.equals("name")) {
                         res = handleName(req);
-                      /// include the other types
+                    } else if (type.equals("start")) {
+                        res = handleStart(req);
+                    } else if (type.equals("guess")) {
+                        res = handleGuess(req);
+                    } else if (type.equals("state")) {
+                        res = handleState(req);
+                    } else if (type.equals("hint")) {
+                        res = handleHint(req);
+                    } else if (type.equals("guessed")) {
+                        res = handleGuessed(req);
+                    } else if (type.equals("giveup")) {
+                        res = handleGiveUp(req);
+                    } else if (type.equals("leaderboard")) {
+                        res = handleLeaderboard(req);
                     } else if (type.equals("quit")) {
                         res = handleQuit(req);
                         sendResponse(res);
@@ -116,6 +130,8 @@ public class HangmanServer {
                     } else {
                         res = wrongType(req);
                     }
+                    //========= IMPLEMENTATION ENDS =====
+
                     sendResponse(res);
                 }
                 closeConnection();
@@ -154,6 +170,148 @@ public class HangmanServer {
         return res;
     }
 
+    //========= IMPLEMENTATION STARTS =====
+    // Minimal implementation of all other handlers
+
+    static JSONObject handleStart(JSONObject req) {
+        secretWord = WORDS[new Random().nextInt(WORDS.length)];
+        usedLetters = new HashSet<>();
+        misses = 0;
+        points = 0;
+        inGame = true;
+
+        JSONObject res = new JSONObject();
+        res.put("ok", true);
+        res.put("type", "start");
+        res.put("word_display", getWordDisplay());
+        res.put("misses", misses);
+        res.put("hangman", GAME_STAGES[misses]);
+        return res;
+    }
+
+    static JSONObject handleGuess(JSONObject req) {
+        JSONObject res = testField(req, "letter");
+        if (!res.getBoolean("ok")) return res;
+
+        if (!inGame) {
+            res = new JSONObject();
+            res.put("ok", false);
+            res.put("message", "No game in progress");
+            return res;
+        }
+
+        String letterStr = req.getString("letter").toLowerCase();
+        if (letterStr.length() != 1 || !Character.isLetter(letterStr.charAt(0))) {
+            res = new JSONObject();
+            res.put("ok", false);
+            res.put("message", "Invalid letter");
+            return res;
+        }
+
+        char letter = letterStr.charAt(0);
+        if (usedLetters.contains(letter)) {
+            res = new JSONObject();
+            res.put("ok", false);
+            res.put("message", "Letter already guessed");
+            return res;
+        }
+
+        usedLetters.add(letter);
+        if (secretWord.contains(letterStr)) {
+            points += 5 * countOccurrences(secretWord, letter);
+        } else {
+            misses++;
+            points -= 1;
+        }
+
+        res = new JSONObject();
+        res.put("ok", true);
+        res.put("type", "guess");
+        res.put("word_display", getWordDisplay());
+        res.put("misses", misses);
+        res.put("hangman", GAME_STAGES[Math.min(misses, 6)]);
+
+        // Check win/lose
+        if (!getWordDisplay().contains("_")) {
+            points += 20; // win bonus
+            res.put("message", "You won! The word was '" + secretWord + "'");
+            inGame = false;
+        } else if (misses >= 6) {
+            res.put("message", "You lost! The word was '" + secretWord + "'");
+            inGame = false;
+        }
+
+        res.put("points", points);
+        return res;
+    }
+
+    static JSONObject handleState(JSONObject req) {
+        JSONObject res = new JSONObject();
+        res.put("ok", true);
+        res.put("type", "state");
+        res.put("word_display", getWordDisplay());
+        res.put("misses", misses);
+        res.put("hangman", GAME_STAGES[Math.min(misses, 6)]);
+        res.put("points", points);
+        return res;
+    }
+
+    static JSONObject handleHint(JSONObject req) {
+        JSONObject res = new JSONObject();
+        if (!inGame) {
+            res.put("ok", false);
+            res.put("message", "No game in progress");
+            return res;
+        }
+        List<Integer> unrevealed = new ArrayList<>();
+        for (int i = 0; i < secretWord.length(); i++) {
+            if (!usedLetters.contains(secretWord.charAt(i))) unrevealed.add(i);
+        }
+        if (unrevealed.isEmpty()) {
+            res.put("ok", false);
+            res.put("message", "No hints available");
+            return res;
+        }
+        int index = unrevealed.get(new Random().nextInt(unrevealed.size()));
+        char hintLetter = secretWord.charAt(index);
+        usedLetters.add(hintLetter);
+        points -= 8;
+
+        res.put("ok", true);
+        res.put("type", "hint");
+        res.put("letter", String.valueOf(hintLetter));
+        res.put("word_display", getWordDisplay());
+        res.put("points", points);
+        return res;
+    }
+
+    static JSONObject handleGuessed(JSONObject req) {
+        JSONObject res = new JSONObject();
+        res.put("ok", true);
+        res.put("type", "guessed");
+        res.put("letters", usedLetters.toString());
+        return res;
+    }
+
+    static JSONObject handleGiveUp(JSONObject req) {
+        inGame = false;
+        JSONObject res = new JSONObject();
+        res.put("ok", true);
+        res.put("type", "giveup");
+        res.put("message", "You gave up! Returning to main menu.");
+        return res;
+    }
+
+    static JSONObject handleLeaderboard(JSONObject req) {
+        JSONObject res = new JSONObject();
+        res.put("ok", true);
+        res.put("type", "leaderboard");
+        res.put("leaderboard", leaderboard.toString());
+        return res;
+    }
+
+    //========= IMPLEMENTATION ENDS =====
+
     /**
      * Quit handler
      */
@@ -166,6 +324,24 @@ public class HangmanServer {
         res.put("message", "Goodbye " + (playerName != null ? playerName : "player") + "!");
 
         return res;
+    }
+
+    // Helper functions for minimal implementation
+    static String getWordDisplay() {
+        if (secretWord == null) return "";
+        StringBuilder sb = new StringBuilder();
+        for (char c : secretWord.toCharArray()) {
+            sb.append(usedLetters.contains(c) ? c : "_");
+        }
+        return sb.toString();
+    }
+
+    static int countOccurrences(String word, char c) {
+        int count = 0;
+        for (char ch : word.toCharArray()) {
+            if (ch == c) count++;
+        }
+        return count;
     }
 
     /**
