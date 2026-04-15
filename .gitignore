@@ -1,13 +1,21 @@
-.idea/
-*.iml
-out/
+# Build outputs
+**/build/
+**/.gradle/
 target/
+out/
 bin/
 
+# IDE files
+.idea/
+*.iml
+
+# OS files
 .DS_Store
 _MACOSX/
 
+# Logs
 *.log
 
-.gradle/
-build/
+# ZIP files (important for your case)
+*.zip
+*.class

@@ -1,0 +1,10 @@
+.idea/
+*.iml
+out/
+target/
+bin/
+
+.DS_Store
+_MACOSX/
+
+*.log
