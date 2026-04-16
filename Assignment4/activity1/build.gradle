@@ -43,11 +43,11 @@ sourceSets {
 }
 
 // Task to run the server
-task runServer(type: JavaExec) {
+tasks.register('runServer', JavaExec) {
     group = 'application'
     description = 'Run the Task Management Server'
-    mainClass = 'taskone.Server'
     classpath = sourceSets.main.runtimeClasspath
+    mainClass.set('taskone.Server')
     standardInput = System.in
 
     // Allow passing port as argument
@@ -57,11 +57,11 @@ task runServer(type: JavaExec) {
 }
 
 // Task to run the client
-task runClient(type: JavaExec) {
+tasks.register('runClient', JavaExec) {
     group = 'application'
     description = 'Run the Task Management Client'
-    mainClass = 'taskone.Client'
     classpath = sourceSets.main.runtimeClasspath
+    mainClass.set('taskone.Client')
     standardInput = System.in
 
     // Allow passing host and port as arguments
@@ -75,9 +75,21 @@ task runClient(type: JavaExec) {
 
 // Default application main class
 application {
-    mainClass = 'taskone.Server'
+    mainClass.set('taskone.Server')
 }
 
 test {
     useJUnitPlatform()
+}
+
+task runThreadedServer(type: JavaExec) {
+    group = 'application'
+    description = 'Run the Task Management Threaded Server'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass.set('taskone.ThreadedServer')
+    standardInput = System.in
+
+    if (project.hasProperty('port')) {
+        args project.property('port')
+    }
 }
