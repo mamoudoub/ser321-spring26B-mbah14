@@ -22,6 +22,9 @@ public class LeaderboardManager {
     private static final DateTimeFormatter formatter =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
+    // FIX: Lock object for thread safety
+    private final Object lock = new Object();
+
     /**
      * Internal class to store score entries.
      */
@@ -60,48 +63,54 @@ public class LeaderboardManager {
      * Returns the rank (1-based) of the added score.
      */
     public int addScore(String playerName, int score) {
-        ScoreEntry entry = new ScoreEntry(playerName, score, LocalDateTime.now());
-        scores.add(entry);
-        Collections.sort(scores);
+        synchronized (lock) { // FIX: synchronize write operations
+            ScoreEntry entry = new ScoreEntry(playerName, score, LocalDateTime.now());
+            scores.add(entry);
+            Collections.sort(scores);
 
-        // Save to file
-        saveToFile();
+            // Save to file
+            saveToFile();
 
-        // Find rank
-        for (int i = 0; i < scores.size(); i++) {
-            if (scores.get(i) == entry) {
-                return i + 1;
+            // Find rank
+            for (int i = 0; i < scores.size(); i++) {
+                if (scores.get(i) == entry) {
+                    return i + 1;
+                }
             }
+            return scores.size();
         }
-        return scores.size();
     }
 
     /**
      * Get top N scores.
      */
     public List<LeaderboardEntry> getTopScores(int n) {
-        List<LeaderboardEntry> result = new ArrayList<>();
+        synchronized (lock) { // FIX: synchronize read operations
+            List<LeaderboardEntry> result = new ArrayList<>();
 
-        int count = Math.min(n, scores.size());
-        for (int i = 0; i < count; i++) {
-            ScoreEntry entry = scores.get(i);
-            LeaderboardEntry protoEntry = LeaderboardEntry.newBuilder()
-                    .setRank(i + 1)
-                    .setPlayerName(entry.playerName)
-                    .setScore(entry.score)
-                    .setTimestamp(entry.timestamp.format(formatter))
-                    .build();
-            result.add(protoEntry);
+            int count = Math.min(n, scores.size());
+            for (int i = 0; i < count; i++) {
+                ScoreEntry entry = scores.get(i);
+                LeaderboardEntry protoEntry = LeaderboardEntry.newBuilder()
+                        .setRank(i + 1)
+                        .setPlayerName(entry.playerName)
+                        .setScore(entry.score)
+                        .setTimestamp(entry.timestamp.format(formatter))
+                        .build();
+                result.add(protoEntry);
+            }
+
+            return result;
         }
-
-        return result;
     }
 
     /**
      * Get total number of scores.
      */
     public int size() {
-        return scores.size();
+        synchronized (lock) { // FIX: protect access
+            return scores.size();
+        }
     }
 
     /**
@@ -113,20 +122,22 @@ public class LeaderboardManager {
             return;
         }
 
-        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split("\\|");
-                if (parts.length == 3) {
-                    String name = parts[0];
-                    int score = Integer.parseInt(parts[1]);
-                    LocalDateTime time = LocalDateTime.parse(parts[2], formatter);
-                    scores.add(new ScoreEntry(name, score, time));
+        synchronized (lock) { // FIX: ensure safe initialization
+            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    String[] parts = line.split("\\|");
+                    if (parts.length == 3) {
+                        String name = parts[0];
+                        int score = Integer.parseInt(parts[1]);
+                        LocalDateTime time = LocalDateTime.parse(parts[2], formatter);
+                        scores.add(new ScoreEntry(name, score, time));
+                    }
                 }
+                Collections.sort(scores);
+            } catch (IOException | NumberFormatException e) {
+                System.err.println("Warning: Could not load leaderboard from file: " + e.getMessage());
             }
-            Collections.sort(scores);
-        } catch (IOException | NumberFormatException e) {
-            System.err.println("Warning: Could not load leaderboard from file: " + e.getMessage());
         }
     }
 
@@ -134,15 +145,17 @@ public class LeaderboardManager {
      * Save leaderboard to file.
      */
     private void saveToFile() {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(persistenceFile))) {
-            for (ScoreEntry entry : scores) {
-                writer.write(entry.playerName + "|" +
+        synchronized (lock) { // FIX: prevent concurrent writes
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(persistenceFile))) {
+                for (ScoreEntry entry : scores) {
+                    writer.write(entry.playerName + "|" +
                             entry.score + "|" +
                             entry.timestamp.format(formatter));
-                writer.newLine();
+                    writer.newLine();
+                }
+            } catch (IOException e) {
+                System.err.println("Warning: Could not save leaderboard to file: " + e.getMessage());
             }
-        } catch (IOException e) {
-            System.err.println("Warning: Could not save leaderboard to file: " + e.getMessage());
         }
     }
 
@@ -150,7 +163,9 @@ public class LeaderboardManager {
      * Clear all scores (for testing).
      */
     public void clear() {
-        scores.clear();
-        saveToFile();
+        synchronized (lock) { // FIX: protect clear operation
+            scores.clear();
+            saveToFile();
+        }
     }
 }
