@@ -28,6 +28,9 @@ public class AuctionServer {
     // Grading mode flag
     private static boolean gradingMode = false;
 
+    // Thread pool for handling clients
+    private static ExecutorService threadPool = Executors.newFixedThreadPool(10);
+
     // Bot opponent name pool
     private static final String[] BOT_NAMES = {
             "Alaric", "Brynn", "Cedric", "Daphne",
@@ -71,7 +74,9 @@ public class AuctionServer {
                     System.out.println("Client " + id + " connected from " +
                             clientSocket.getInetAddress().getHostAddress());
 
-                    processConnection(clientSocket, id);
+                    // THREADING FIX
+                    threadPool.submit(() -> processConnection(clientSocket, id));
+
                 } catch (IOException e) {
                     System.err.println("Error accepting client: " + e.getMessage());
                 }
@@ -116,6 +121,36 @@ public class AuctionServer {
                             response = buildError(message);
                         }
                         break;
+
+                    case JOIN:
+                        if (playerName == null) {
+                            response = buildError("Please register first.");
+                            break;
+                        }
+
+                        // CREATE GAME STATE
+                        gameState = new PlayerGameState(playerName, gradingMode);
+
+                        // FIRST ITEM
+                        Item firstItem = gameState.getCurrentItem();
+
+                        // PLAYER STATUS
+                        PlayerStatus status = PlayerStatus.newBuilder()
+                                .setPlayerName(playerName)
+                                .setGoldRemaining(gameState.getGold())
+                                .setItemsValue(0)
+                                .setTotalScore(gameState.getGold())
+                                .build();
+
+                        response = Response.newBuilder()
+                                .setType(Response.ResponseType.GAME_JOINED)
+                                .setOk(true)
+                                .setMessage("Game started! First item:")
+                                .setNextItem(itemToProto(firstItem))
+                                .setPlayerStatus(status)
+                                .build();
+                        break;
+
                     case QUIT:
                         response = handleQuit(gameState);
                         if (response != null) {
