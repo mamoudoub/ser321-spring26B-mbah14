@@ -67,8 +67,9 @@ public class AuctionClient {
                 }
 
                 if (inGame) {
-                    // In game - expecting bid amount
-                    handleGameInput(input);
+                    // In game - bidding handled in playGame()
+                    // FIX: Do nothing here (prevents duplicate handling)
+                    continue;
                 } else {
                     // Not in game - handle menu commands
                     running = handleMenuInput(input);
@@ -131,11 +132,12 @@ public class AuctionClient {
 
     /**
      * Handle game input (bidding).
+     * NOTE: This method is no longer used because bidding is handled in playGame().
+     * Kept for compatibility and to preserve original structure.
      */
     private static void handleGameInput(String input) throws IOException {
         try {
             int bidAmount = Integer.parseInt(input);
-            // Bid amount will be sent when we know item ID
             System.out.println("Processing bid: " + bidAmount);
         } catch (NumberFormatException e) {
             System.out.println("Please enter a valid number for your bid.");
@@ -186,6 +188,7 @@ public class AuctionClient {
         if (response != null && response.getType() == Response.ResponseType.GAME_JOINED) {
             System.out.println("\n" + response.getMessage());
             currentGold = response.getPlayerStatus().getGoldRemaining();
+
             if (response.hasNextItem()) {
                 inGame = true;
                 AuctionItem firstItem = response.getNextItem();
@@ -203,12 +206,12 @@ public class AuctionClient {
     private static void playGame(AuctionItem firstItem) throws IOException {
         AuctionItem currentItem = firstItem;
 
-
         while (inGame) {
             if (currentItem != null) {
                 // Prompt for bid (mention -1 to skip)
                 System.out.print("\nEnter your bid (0-" + currentGold + ", or -1 to skip): ");
                 String input = scanner.nextLine().trim();
+
                 try {
                     int bidAmount = Integer.parseInt(input);
 
@@ -242,7 +245,6 @@ public class AuctionClient {
                             currentGold = response.getPlayerStatus().getGoldRemaining();
                             displayItem(currentItem);
                         } else {
-                            // No more items - should get GAME_OVER next
                             currentItem = null;
                         }
                     } else if (response.getType() == Response.ResponseType.GAME_OVER) {
@@ -273,13 +275,11 @@ public class AuctionClient {
      * Handle LEADERBOARD.
      */
     private static void handleLeaderboard() throws IOException {
-        // Send LEADERBOARD request
         Request request = Request.newBuilder()
                 .setType(Request.RequestType.LEADERBOARD)
                 .build();
         request.writeDelimitedTo(out);
 
-        // Read response
         Response response = Response.parseDelimitedFrom(in);
         if (response != null && response.getType() == Response.ResponseType.LEADERBOARD_RESPONSE) {
             System.out.println("\n" + response.getMessage());
@@ -291,13 +291,11 @@ public class AuctionClient {
      * Handle QUIT.
      */
     private static void handleQuit() throws IOException {
-        // Send QUIT request
         Request request = Request.newBuilder()
                 .setType(Request.RequestType.QUIT)
                 .build();
         request.writeDelimitedTo(out);
 
-        // Read response
         Response response = Response.parseDelimitedFrom(in);
         if (response != null) {
             System.out.println(response.getMessage());
