@@ -1,11 +1,10 @@
-Absolutely! Here's the same **bug report** in proper Markdown formatting, ready to copy into your `bug_report.md` file:
-
 # Part B
 
 # StringConcatenation Debugging Exercise
 
 ## Overview
-The stringconcatenation service is implemented in both client and server, but has **4 bugs** that prevent it from working correctly according to the protocol specification.
+The stringconcatenation service is implemented in both client and server, but has **4 bugs** that prevent it from working 
+correctly according to the protocol specification.
 
 The Correct Protocol is in the README.md
 
