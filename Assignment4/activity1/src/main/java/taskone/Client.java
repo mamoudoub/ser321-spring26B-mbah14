@@ -6,6 +6,7 @@ import java.util.Scanner;
 import org.json.JSONObject;
 import org.json.JSONArray;
 import taskone.proto.Response;
+import taskone.proto.Request;
 
 /**
  * Task Management Client.
@@ -55,9 +56,9 @@ public class Client {
             // Use either JSON or Proto from the examples below,
             // and make matching changes in Performer.java.
 
-                /////////////////////////////////////////////////////////////////////////////
-                            // Welcome JSON
-                /////////////////////////////////////////////////////////////////////////////
+            /////////////////////////////////////////////////////////////////////////////
+            // Welcome JSON
+            /////////////////////////////////////////////////////////////////////////////
             String welcomeMsg = in.readLine();
             if (welcomeMsg != null) {
                 JSONObject welcomeMessage = new JSONObject(welcomeMsg);
@@ -66,18 +67,18 @@ public class Client {
                     System.out.println(welcomeMessage.getString("data"));
                 }
             }
-                /////////////////////////////////////////////////////////////////////////////
-                            // End Welcome JSON
-                /////////////////////////////////////////////////////////////////////////////
+            /////////////////////////////////////////////////////////////////////////////
+            // End Welcome JSON
+            /////////////////////////////////////////////////////////////////////////////
 
-                /////////////////////////////////////////////////////////////////////////////
-                            // Welcome Proto
-                /////////////////////////////////////////////////////////////////////////////
+            /////////////////////////////////////////////////////////////////////////////
+            // Welcome Proto
+            /////////////////////////////////////////////////////////////////////////////
 //            Response response = Response.parseDelimitedFrom(inStream);
 //            System.out.println(response.getMessage());
-                /////////////////////////////////////////////////////////////////////////////
-                            // End Welcome Proto
-                /////////////////////////////////////////////////////////////////////////////
+            /////////////////////////////////////////////////////////////////////////////
+            // End Welcome Proto
+            /////////////////////////////////////////////////////////////////////////////
 
             // Main menu loop
             boolean running = true;
@@ -162,12 +163,18 @@ public class Client {
         request.put("description", description);
         request.put("category", category);
 
+        // PROTO (added, JSON still active)
+        Request protoReq = Request.newBuilder()
+                .setType(Request.RequestType.ADD)
+                .setDescription(description)
+                .setCategory(category)
+                .build();
+
         // Send request and get response
         JSONObject response = sendRequest(request); // Replace this with:
-        // request.writeDelimitedTo(outStream); // where request is a Request proto
-        // Response response = Response.parseDelimitedFrom(inStream); // Read response as Proto
-        // Then parse the Proto response.
 
+        // request.writeDelimitedTo(outStream);
+        // Response protoResponse = Response.parseDelimitedFrom(inStream);
 
         if (response != null) {
             if (response.getBoolean("ok")) {
@@ -216,8 +223,14 @@ public class Client {
         request.put("type", "list");
         request.put("filter", filter);
 
+        // PROTO (added only, not replacing JSON yet)
+        Request protoReq = Request.newBuilder()
+                .setType(Request.RequestType.LIST)
+                .setFilter(filter)
+                .build();
+
         // Send request and get response
-        JSONObject response = sendRequest(request); // Same conversion approach as in addTask().
+        JSONObject response = sendRequest(request);
 
         // handle response
         if (response != null) {
@@ -226,7 +239,7 @@ public class Client {
                 JSONArray tasks = data.getJSONArray("tasks");
                 int count = data.getInt("count");
 
-                System.out.println("\n" + filter.toUpperCase() + " TASKS (" + count + "):");
+                System.out.println("\n" + filter.toUpperCase() + " TASKS (" + count + ")");
                 System.out.println("─────────────────────────────────────────────────");
 
                 if (count == 0) {
@@ -264,8 +277,15 @@ public class Client {
         request.put("type", "finish");
         request.put("id", id);
 
+        // PROTO added
+        Request protoReq = Request.newBuilder()
+                .setType(Request.RequestType.FINISH)
+                .setId(id)
+                .build();
+
         // Send request and get response
         JSONObject response = sendRequest(request);
+
         if (response != null) {
             if (response.getBoolean("ok")) {
                 JSONObject data = response.getJSONObject("data");
@@ -283,12 +303,16 @@ public class Client {
     private static void quit() {
         System.out.println("\n--- Quitting ---");
 
-        // Create request
         JSONObject request = new JSONObject();
         request.put("type", "quit");
 
-        // Send request and get response
+        // PROTO added
+        Request protoReq = Request.newBuilder()
+                .setType(Request.RequestType.QUIT)
+                .build();
+
         JSONObject response = sendRequest(request);
+
         if (response != null && response.getBoolean("ok")) {
             JSONObject data = response.getJSONObject("data");
             System.out.println(data.getString("message"));
@@ -300,10 +324,7 @@ public class Client {
      */
     private static JSONObject sendRequest(JSONObject request) {
         try {
-            // Send request
             out.println(request.toString());
-
-            // Receive response
             String responseLine = in.readLine();
             if (responseLine != null) {
                 return new JSONObject(responseLine);
@@ -313,8 +334,8 @@ public class Client {
             }
         } catch (IOException e) {
             System.out.println("Error communicating with server: " + e.getMessage());
-            return null;
         }
+        return null;
     }
 
     /**
@@ -328,6 +349,7 @@ public class Client {
 
         String status = finished ? "[DONE]" : "[PENDING]";
         String categoryTag;
+
         switch (category) {
             case "work":
                 categoryTag = "[WORK]";
@@ -352,18 +374,10 @@ public class Client {
      */
     private static void cleanup() {
         try {
-            if (scanner != null) {
-                scanner.close();
-            }
-            if (in != null) {
-                in.close();
-            }
-            if (out != null) {
-                out.close();
-            }
-            if (socket != null && !socket.isClosed()) {
-                socket.close();
-            }
+            if (scanner != null) scanner.close();
+            if (in != null) in.close();
+            if (out != null) out.close();
+            if (socket != null && !socket.isClosed()) socket.close();
         } catch (IOException e) {
             System.err.println("Error closing resources: " + e.getMessage());
         }
