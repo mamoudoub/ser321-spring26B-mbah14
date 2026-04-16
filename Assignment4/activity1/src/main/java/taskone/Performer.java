@@ -7,6 +7,10 @@ import org.json.JSONObject;
 import org.json.JSONArray;
 import taskone.proto.Response;
 
+// === FIX: Proto imports ===
+import taskone.proto.Request;
+import taskone.proto.TaskProto;
+
 /**
  * Performer class handles client requests using JSON protocol.
  * This version uses JSON for serialization.
@@ -37,37 +41,42 @@ public class Performer {
             in = new BufferedReader(new InputStreamReader(inStream));
             out = new PrintWriter(outStream, true);
 
-            // Use either JSON or Proto from the examples below,
-            // and make matching changes in Client.java.
-
-                /////////////////////////////////////////////////////////////////////////////
-                            // Welcome JSON
-                /////////////////////////////////////////////////////////////////////////////
+            /////////////////////////////////////////////////////////////////////////////
+            // Welcome JSON
+            /////////////////////////////////////////////////////////////////////////////
             // Send welcome message. You can keep this as JSON.
             JSONObject welcomeMessage = JsonUtils.createSuccessResponse("connect", "Connected to Task Management Server");
             out.println(welcomeMessage);
-                /////////////////////////////////////////////////////////////////////////////
-                            // End Welcome JSON
-                /////////////////////////////////////////////////////////////////////////////
+            /////////////////////////////////////////////////////////////////////////////
+            // End Welcome JSON
+            /////////////////////////////////////////////////////////////////////////////
 
 
 
-                /////////////////////////////////////////////////////////////////////////////
-                            // Welcome Proto
-                /////////////////////////////////////////////////////////////////////////////
+            /////////////////////////////////////////////////////////////////////////////
+            // Welcome Proto
+            /////////////////////////////////////////////////////////////////////////////
 //            Response.Builder protoResp = Response.newBuilder().setType(Response.ResponseType.SUCCESS).setMessage("Connected to Proto Task Management Server");
 //            protoResp.build().writeDelimitedTo(outStream);
-                /////////////////////////////////////////////////////////////////////////////
-                            // End Welcome Proto
-                /////////////////////////////////////////////////////////////////////////////
+            /////////////////////////////////////////////////////////////////////////////
+            // End Welcome Proto
+            /////////////////////////////////////////////////////////////////////////////
 
 
 
 
             // Process requests
             String request; // would need to be changed to proto
+
+            // === FIX: use Proto request instead of JSON string ===
+            Request protoRequest;
+
             while (true) {
-                request = in.readLine(); // Read as String JSON, not Proto yet.
+
+                // === FIX: read Proto instead of JSON ===
+                protoRequest = Request.parseDelimitedFrom(inStream);
+                if (protoRequest == null) break;
+
                 // We intentionally skip error handling here to focus on Proto conversion.
                 // This may fail if the request is malformed or missing expected fields, which is ok this time.
 
@@ -75,40 +84,84 @@ public class Performer {
                 // That is fine, just do not call these requests until converted.
                 // Start with the "add" request.
 
-                System.out.println(request);
-                JSONObject requestJSON = new JSONObject(request);
-                String type = requestJSON.getString("type");
+                System.out.println(protoRequest);
+
+                // JSONObject requestJSON = new JSONObject(request);
+                // String type = requestJSON.getString("type");
+
+                // === FIX: get type from Proto ===
+                Request.RequestType type = protoRequest.getType();
 
                 JSONObject responseJSON;
+                Response response;
+
                 System.out.println(type);
+
                 // Change all the following requests/responses to JSON here and in Client.java
                 switch (type) {
-                    case "add":
-                        responseJSON = handleAdd(requestJSON); // would need to be changed to return ProtoRes and get ProtReq
+                    case ADD:
+                        // === FIX: use Proto handler ===
+                        response = handleAddProto(protoRequest);
                         break;
-                    case "list":
-                        responseJSON = handleList(requestJSON);
+
+                    case LIST:
+                        responseJSON = handleList(new JSONObject());
+                        out.println(responseJSON.toString());
+                        continue;
+
+                    case FINISH:
+                        responseJSON = handleFinish(new JSONObject());
+                        out.println(responseJSON.toString());
+                        continue;
+
+                    case QUIT:
+                        // === FIX: Proto quit response ===
+                        response = Response.newBuilder()
+                                .setType(Response.ResponseType.SUCCESS)
+                                .setMessage("Goodbye!")
+                                .build();
                         break;
-                    case "finish":
-                        responseJSON = handleFinish(requestJSON);
-                        break;
-                    case "quit":
-                        responseJSON = handleQuit();
-                        break;
+
                     default:
-                        responseJSON = JsonUtils.createErrorResponse(type, "Unknown request type: " + type);
+                        // === FIX: Proto error response ===
+                        response = Response.newBuilder()
+                                .setType(Response.ResponseType.ERROR)
+                                .setMessage("Unknown request type: " + type)
+                                .build();
                 }
 
-                out.println(responseJSON.toString()); // send json
+                // === FIX: send Proto instead of JSON ===
+                response.writeDelimitedTo(outStream);
 
                 // If quit, break the loop
-                if (responseJSON.has("type") && responseJSON.getString("type").equals("quit")) {
+                if (type == Request.RequestType.QUIT) {
                     break;
                 }
             }
         } catch (IOException e) {
             System.err.println("Error handling client: " + e.getMessage());
         }
+    }
+
+    // === FIX: Proto version of add ===
+    private Response handleAddProto(Request request) {
+        String description = request.getDescription();
+        String category = request.getCategory();
+
+        Task task = taskList.addTask(description, category); // Assume valid input for this starter version.
+
+        TaskProto taskProto = TaskProto.newBuilder()
+                .setId(task.getId())
+                .setDescription(task.getDescription())
+                .setCategory(task.getCategory())
+                .setFinished(task.isFinished())
+                .build();
+
+        return Response.newBuilder()
+                .setType(Response.ResponseType.SUCCESS)
+                .setMessage("Task added")
+                .setTask(taskProto)
+                .build();
     }
 
     private JSONObject handleAdd(JSONObject request) { // will need to change to not use JSON anymore - or make new method
@@ -143,7 +196,6 @@ public class Performer {
         // Return success response with created task
         return JsonUtils.createSuccessResponse("add", JsonUtils.taskToJson(task));
     }
-
 
     private JSONObject handleList(JSONObject request) {
         // Get filter (defaults to "all")
