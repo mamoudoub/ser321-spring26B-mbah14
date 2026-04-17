@@ -244,7 +244,7 @@ public class AuctionServer {
                         boolean hasNext = gameState.moveToNextItem();
 
                         // Player status update
-                        buffers.PlayerStatus status = PlayerStatus.newBuilder()
+                        PlayerStatus status = PlayerStatus.newBuilder()
                                 .setPlayerName(playerName)
                                 .setGoldRemaining(gameState.getGold())
                                 .setItemsValue(gameState.getInventoryValue())
