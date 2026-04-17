@@ -244,12 +244,13 @@ public class AuctionServer {
                         boolean hasNext = gameState.moveToNextItem();
 
                         // Player status update
-                        PlayerStatus status = PlayerStatus.newBuilder()
+                        PlayerStatus bidStatus = PlayerStatus.newBuilder()
                                 .setPlayerName(playerName)
                                 .setGoldRemaining(gameState.getGold())
                                 .setItemsValue(gameState.getInventoryValue())
                                 .setTotalScore(gameState.getPlayerScore())
                                 .build();
+
 
                         // Build BID_RESULT
                         Response.Builder builder = Response.newBuilder()
@@ -264,7 +265,7 @@ public class AuctionServer {
                                                 .setWinningBid(bidOfWinner)
                                                 .build()
                                 )
-                                .setPlayerStatus(status);
+                                .setPlayerStatus(bidStatus);
 
                         // Next item or game over trigger handled below
                         if (hasNext) {
