@@ -98,10 +98,8 @@ public class AuctionServer {
 
             System.out.println("[Client " + clientId + "] Handler started");
 
-            // Send initial welcome
-            sendWelcome(out, "Welcome to the Auction Game! Please set your name.");
+            sendWelcome(out, "Welcome to the Auction Game! Please register.");
 
-            // Read and process requests
             Request request;
             while ((request = Request.parseDelimitedFrom(in)) != null) {
                 Request.RequestType type = request.getType();
@@ -359,6 +357,7 @@ public class AuctionServer {
      */
     private static void sendWelcome(OutputStream out, String message) throws IOException {
         buildWelcome(message).writeDelimitedTo(out);
+        out.flush();
     }
 
     /**
