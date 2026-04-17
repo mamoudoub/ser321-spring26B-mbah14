@@ -174,60 +174,72 @@ public class AuctionServer {
 
 
                         // BOT BIDS (use reserve-aware method)
-                        int bot1Bid = gameState.getBot1().decideBid(currentItem, reserve);
-                        int bot2Bid = gameState.getBot2().decideBid(currentItem, reserve);
-                        int bot3Bid = gameState.getBot3().decideBid(currentItem, reserve);
+//                        int bot1Bid = gameState.getBot1().decideBid(currentItem, reserve);
+//                        int bot2Bid = gameState.getBot2().decideBid(currentItem, reserve);
+//                        int bot3Bid = gameState.getBot3().decideBid(currentItem, reserve);
+
+                        //===== STARTS =====
+                        int bot1Bid = gameState.getBot1().decideBid(currentItem);
+                        int bot2Bid = gameState.getBot2().decideBid(currentItem);
+                        int bot3Bid = gameState.getBot3().decideBid(currentItem);
+                        //===== ENDS ====++
 
                         // Determine winner (simple max bid, tie = first found)
-                        String winner = playerName;
-                        int winningBid = normalizedPlayerBid;
+                        String winner;
+                        int winningBid;
 
-                        if (bot1Bid > winningBid) {
-                            winner = gameState.getBot1().getName();
-                            winningBid = bot1Bid;
-                        }
-                        if (bot2Bid > winningBid) {
-                            winner = gameState.getBot2().getName();
-                            winningBid = bot2Bid;
-                        }
-                        if (bot3Bid > winningBid) {
-                            winner = gameState.getBot3().getName();
-                            winningBid = bot3Bid;
-                        }
+                        //====== STARTS =====
+                        // Normalize bids into one structure
+                        Map<String, Integer> bids = new HashMap<>();
 
-                        //====== STARTS ====
-                        // Tie-breaker rule: alphabetical order (required by spec)
-                        List<String> tied = new ArrayList<>();
+                        bids.put(playerName, normalizedPlayerBid);
+                        bids.put(gameState.getBot1().getName(), bot1Bid);
+                        bids.put(gameState.getBot2().getName(), bot2Bid);
+                        bids.put(gameState.getBot3().getName(), bot3Bid);
 
-                        int maxBid = Math.max(normalizedPlayerBid, Math.max(bot1Bid, Math.max(bot2Bid, bot3Bid)));
+                        // Find max bid
+                        int max = Collections.max(bids.values());
 
-                        if (normalizedPlayerBid == maxBid) tied.add(playerName);
-                        if (bot1Bid == maxBid) tied.add(gameState.getBot1().getName());
-                        if (bot2Bid == maxBid) tied.add(gameState.getBot2().getName());
-                        if (bot3Bid == maxBid) tied.add(gameState.getBot3().getName());
+                        // If nobody bids above 0 → unsold (protocol edge case safety)
+                        if (max <= 0) {
+                            winner = "(unsold)";
+                            winningBid = 0;
+                        } else {
 
-                        // Alphabetical winner if tie exists
-                        if (tied.size() > 1) {
+                            // Collect all tied winners
+                            List<String> tied = new ArrayList<>();
+                            for (Map.Entry<String, Integer> e : bids.entrySet()) {
+                                if (e.getValue() == max) {
+                                    tied.add(e.getKey());
+                                }
+                            }
+
+                            // Tie-break alphabetically
                             Collections.sort(tied);
                             winner = tied.get(0);
-
-
-                            if (winner.equals(playerName)) winningBid = playerBid;
-                            else if (winner.equals(gameState.getBot1().getName())) winningBid = bot1Bid;
-                            else if (winner.equals(gameState.getBot2().getName())) winningBid = bot2Bid;
-                            else winningBid = bot3Bid;
+                            winningBid = max;
                         }
+
                         //===== ENDS =====
-                        // Award item
+                        // Safe, consistent winner bid lookup (no special-case logic scattered)
+                        Integer winnerBidObj = bids.get(winner);
+                        int bidOfWinner = (winnerBidObj != null) ? winnerBidObj : 0;
+
+                        // Award item (single clear routing path)
+                        String bot1Name = gameState.getBot1().getName();
+                        String bot2Name = gameState.getBot2().getName();
+                        String bot3Name = gameState.getBot3().getName();
+
                         if (winner.equals(playerName)) {
-                            gameState.awardItemToPlayer(currentItem, normalizedPlayerBid);
-                        } else if (winner.equals(gameState.getBot1().getName())) {
-                            gameState.getBot1().awardItem(currentItem, bot1Bid);
-                        } else if (winner.equals(gameState.getBot2().getName())) {
-                            gameState.getBot2().awardItem(currentItem, bot2Bid);
-                        } else {
-                            gameState.getBot3().awardItem(currentItem, bot3Bid);
+                            gameState.awardItemToPlayer(currentItem, bidOfWinner);
+                        } else if (winner.equals(bot1Name)) {
+                            gameState.getBot1().awardItem(currentItem, bidOfWinner);
+                        } else if (winner.equals(bot2Name)) {
+                            gameState.getBot2().awardItem(currentItem, bidOfWinner);
+                        } else if (winner.equals(bot3Name)) {
+                            gameState.getBot3().awardItem(currentItem, bidOfWinner);
                         }
+                        //===== END =====
 
                         boolean hasNext = gameState.moveToNextItem();
 
@@ -249,7 +261,7 @@ public class AuctionServer {
                                                 .setItem(itemToProto(currentItem))
                                                 .setActualValue(currentItem.getActualValue())
                                                 .setWinnerName(winner)
-                                                .setWinningBid(winningBid)
+                                                .setWinningBid(bidOfWinner)
                                                 .build()
                                 )
                                 .setPlayerStatus(status);
@@ -400,14 +412,62 @@ public class AuctionServer {
                                      PlayerGameState gameState,
                                      String playerName) throws IOException {
 
-        // Add final score to leaderboard
-        leaderboard.addScore(playerName, gameState.getPlayerScore());
-
-        GameResult result = GameResult.newBuilder()
-                .setWinnerName(playerName)
-                .setLeaderboardPosition(0) // can refine later if required
+        // 1. Build player status
+        PlayerStatus player = PlayerStatus.newBuilder()
+                .setPlayerName(playerName)
+                .setGoldRemaining(gameState.getGold())
+                .setItemsValue(gameState.getInventoryValue())
+                .setTotalScore(gameState.getPlayerScore())
+                .addAllItemsWon(gameState.getItemNames())
                 .build();
 
+        // 2. Build bot statuses
+        PlayerStatus bot1 = PlayerStatus.newBuilder()
+                .setPlayerName(gameState.getBot1().getName())
+                .setGoldRemaining(gameState.getBot1().getGold())
+                .setItemsValue(gameState.getBot1().getInventoryValue())
+                .setTotalScore(gameState.getBot1().getTotalScore())
+                .addAllItemsWon(gameState.getBot1().getItemNames())
+                .build();
+
+        PlayerStatus bot2 = PlayerStatus.newBuilder()
+                .setPlayerName(gameState.getBot2().getName())
+                .setGoldRemaining(gameState.getBot2().getGold())
+                .setItemsValue(gameState.getBot2().getInventoryValue())
+                .setTotalScore(gameState.getBot2().getTotalScore())
+                .addAllItemsWon(gameState.getBot2().getItemNames())
+                .build();
+
+        PlayerStatus bot3 = PlayerStatus.newBuilder()
+                .setPlayerName(gameState.getBot3().getName())
+                .setGoldRemaining(gameState.getBot3().getGold())
+                .setItemsValue(gameState.getBot3().getInventoryValue())
+                .setTotalScore(gameState.getBot3().getTotalScore())
+                .addAllItemsWon(gameState.getBot3().getItemNames())
+                .build();
+
+        // 3. Determine winner (simple max score)
+        List<PlayerStatus> all = Arrays.asList(player, bot1, bot2, bot3);
+
+        all.sort((a, b) -> {
+            int cmp = Integer.compare(b.getTotalScore(), a.getTotalScore());
+            if (cmp != 0) return cmp;
+            return a.getPlayerName().compareTo(b.getPlayerName());
+        });
+
+        String winner = all.get(0).getPlayerName();
+
+        // 4. Leaderboard position
+        int rank = leaderboard.addScore(playerName, gameState.getPlayerScore());
+
+        // 5. Build GameResult
+        GameResult result = GameResult.newBuilder()
+                .addAllPlayerScores(all)
+                .setWinnerName(winner)
+                .setLeaderboardPosition(rank)
+                .build();
+
+        // 6. Send response
         Response gameOver = Response.newBuilder()
                 .setType(Response.ResponseType.GAME_OVER)
                 .setOk(true)
