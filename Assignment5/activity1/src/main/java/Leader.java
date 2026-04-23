@@ -1,3 +1,21 @@
+/**
+ * Leader.java
+ *
+ * Distributed Consensus System - Leader Node
+ *
+ * This class implements the leader in a distributed leader-worker architecture.
+ * The leader assigns arithmetic tasks to worker nodes, collects their responses,
+ * and determines a consensus result using majority voting.
+ *
+ * The leader uses CountDownLatch to synchronize worker responses and ensures
+ * that all worker results are collected (or a timeout occurs) before computing
+ * consensus.
+ *
+ * Author: Mamoudou Bah
+ * Version: 1.0 Date: 4/23/2026
+ * Course: SER321 - Principles of Distributed Software Systems
+ */
+
 import java.io.*;
 import java.net.*;
 import java.util.*;
