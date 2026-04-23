@@ -1,0 +1,62 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'consensus'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Testing (optional but good to keep)
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.9.3'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+// Java version (match your previous setup)
+sourceCompatibility = '18'
+targetCompatibility = '18'
+
+// Task to run Leader
+task runLeader(type: JavaExec) {
+    group = 'application'
+    description = 'Run the Leader node'
+    mainClass = 'Leader'
+    classpath = sourceSets.main.runtimeClasspath
+    standardInput = System.in
+
+    // Allow passing port dynamically
+    if (project.hasProperty('args')) {
+        args project.property('args').split()
+    } else {
+        args '9000' // default port
+    }
+}
+
+// Task to run Worker
+task runWorker(type: JavaExec) {
+    group = 'application'
+    description = 'Run a Worker node'
+    mainClass = 'Worker'
+    classpath = sourceSets.main.runtimeClasspath
+    standardInput = System.in
+
+    // Expect: WorkerName host port
+    if (project.hasProperty('args')) {
+        args project.property('args').split()
+    } else {
+        println "Usage: gradle runWorker --args=\"Worker1 localhost 9000\""
+    }
+}
+
+// Default main class (Leader)
+application {
+    mainClass = 'Leader'
+}
+
+test {
+    useJUnitPlatform()
+}
