@@ -1,9 +1,36 @@
+/**
+ * Worker.java
+ *
+ * Distributed Consensus System - Worker Node
+ *
+ * This class implements a worker in a distributed leader-worker architecture.
+ * Each worker connects to the leader, receives arithmetic tasks, and prompts
+ * a human user to manually compute and enter the result.
+ *
+ * The worker sends the user-provided result back to the leader and receives
+ * consensus announcements once the leader computes majority voting results.
+ *
+ * This design simulates real distributed systems where nodes may have
+ * independent behavior and rely on coordination protocols.
+ *
+ * Author: Mamoudou Bah
+ * Version: 1.0 Date: 4/23/2026
+ * Course: SER321 - Principles of Distributed Software Systems
+ */
+
 import java.io.*;
 import java.net.*;
 import java.util.Scanner;
 
 public class Worker {
 
+    /**
+     * Connects to the leader node and continuously:
+     * receives tasks, prompts user input, sends results,
+     * and processes consensus updates.
+     *
+     * @param args [workerName, host, port]
+     */
     public static void main(String[] args) throws Exception {
 
         String name = args[0];
