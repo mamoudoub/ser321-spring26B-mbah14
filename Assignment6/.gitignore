@@ -1,0 +1,16 @@
+# OS junk
+.DS_Store
+__MACOSX/
+._*
+
+# Logs
+*.log
+
+# Gradle
+.gradle/
+build/
+
+# IDEs
+.idea/
+.vscode/
+*.iml
