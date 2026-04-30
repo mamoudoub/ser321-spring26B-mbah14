@@ -1,3 +1,4 @@
+
 import com.google.protobuf.Empty;
 import example.grpcclient.Client;
 import io.grpc.ManagedChannel;
@@ -39,6 +40,8 @@ public class ServerTest {
     ManagedChannel channel;
     private EchoGrpc.EchoBlockingStub blockingStub;
     private JokeGrpc.JokeBlockingStub blockingStub2;
+    private ConverterGrpc.ConverterBlockingStub blockingStub6;
+    private LibraryGrpc.LibraryBlockingStub blockingStub7;
 
 
     @org.junit.Before
@@ -48,6 +51,8 @@ public class ServerTest {
 
         blockingStub = EchoGrpc.newBlockingStub(channel);
         blockingStub2 = JokeGrpc.newBlockingStub(channel);
+        blockingStub6 = ConverterGrpc.newBlockingStub(channel);
+        blockingStub7 = LibraryGrpc.newBlockingStub(channel);
     }
 
     @org.junit.After
@@ -128,4 +133,142 @@ public class ServerTest {
         assertEquals("whoop", response.getJoke(0));
     }
 
+    // =========================================================
+    //                  CONVERTER TESTS (NEW)
+    // =========================================================
+
+    @Test
+    public void converterHappyPath() {
+        ConversionRequest req = ConversionRequest.newBuilder()
+                .setValue(10)
+                .setFromUnit("KILOMETER")
+                .setToUnit("MILE")
+                .build();
+
+        ConversionResponse res = blockingStub6.convert(req);
+
+        assertTrue(res.getIsSuccess());
+        assertTrue(res.getResult() > 0);
+    }
+
+    @Test
+    public void converterMissingFields() {
+        ConversionRequest req = ConversionRequest.newBuilder()
+                .setValue(10)
+                .build();
+
+        ConversionResponse res = blockingStub6.convert(req);
+
+        assertFalse(res.getIsSuccess());
+        assertNotNull(res.getError());
+    }
+
+    @Test
+    public void converterInvalidUnit() {
+        ConversionRequest req = ConversionRequest.newBuilder()
+                .setValue(10)
+                .setFromUnit("INVALID")
+                .setToUnit("MILE")
+                .build();
+
+        ConversionResponse res = blockingStub6.convert(req);
+
+        assertFalse(res.getIsSuccess());
+    }
+
+    // =========================================================
+    //                  LIBRARY TESTS (NEW)
+    // =========================================================
+
+    @Test
+    public void libraryListBooks() {
+        BookListResponse res =
+                blockingStub7.listBooks(Empty.newBuilder().build());
+
+        assertNotNull(res);
+    }
+
+    @Test
+    public void libraryBorrowHappyPath() {
+        BorrowRequest req = BorrowRequest.newBuilder()
+                .setIsbn("12345")
+                .setBorrowerName("TestUser")
+                .build();
+
+        BorrowResponse res = blockingStub7.borrowBook(req);
+
+        assertNotNull(res);
+    }
+
+    @Test
+    public void libraryBorrowMissingISBN() {
+        BorrowRequest req = BorrowRequest.newBuilder()
+                .setBorrowerName("TestUser")
+                .build();
+
+        BorrowResponse res = blockingStub7.borrowBook(req);
+
+        assertFalse(res.getIsSuccess());
+        assertEquals("missing field", res.getError());
+    }
+
+    @Test
+    public void libraryBorrowInvalidBook() {
+        BorrowRequest req = BorrowRequest.newBuilder()
+                .setIsbn("DOES_NOT_EXIST")
+                .setBorrowerName("TestUser")
+                .build();
+
+        BorrowResponse res = blockingStub7.borrowBook(req);
+
+        assertFalse(res.getIsSuccess());
+        assertEquals("book not found", res.getError());
+    }
+
+    @Test
+    public void libraryBorrowAlreadyBorrowed() {
+        BorrowRequest req = BorrowRequest.newBuilder()
+                .setIsbn("12345")
+                .setBorrowerName("User1")
+                .build();
+
+        blockingStub7.borrowBook(req);
+
+        BorrowRequest req2 = BorrowRequest.newBuilder()
+                .setIsbn("12345")
+                .setBorrowerName("User2")
+                .build();
+
+        BorrowResponse res = blockingStub7.borrowBook(req2);
+
+        assertFalse(res.getIsSuccess());
+    }
+
+    // =========================================================
+    //              PERSISTENCE TEST (RESTART REQUIRED)
+    // =========================================================
+
+    @Test
+    public void libraryPersistenceTest() {
+
+        BorrowRequest req = BorrowRequest.newBuilder()
+                .setIsbn("12345")
+                .setBorrowerName("PersistUser")
+                .build();
+
+        blockingStub7.borrowBook(req);
+
+        BookListResponse res =
+                blockingStub7.listBooks(Empty.newBuilder().build());
+
+        boolean found = false;
+
+        for (Book b : res.getBooksList()) {
+            if (b.getIsbn().equals("12345")) {
+                found = b.getIsBorrowed();
+            }
+        }
+
+        assertTrue(found);
+    }
 }
