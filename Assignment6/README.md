@@ -122,3 +122,54 @@ The server maintains a persistent history of game rounds using:
 
 ```proto
 repeated string round_summary = 6;
+
+```
+## Project Description
+
+This project is a gRPC-based distributed system that implements multiple services including Echo, Joke, 
+Converter, Library, and Rock-Paper-Scissors (RPS).  
+It demonstrates client-server communication, service discovery, and stateful server-side behavior.
+
+
+## How to Use the Program
+
+The program works through a client that sends requests to the server node.
+
+Echo Service: send a message string and receive it back  
+Joke Service: send a request number and receive jokes  
+Converter Service: convert values between units (e.g., kilometers INTO miles)  
+
+## Library Service:
+- Load initial books from books.txt  
+- Borrow, return, and search books using title or author  
+
+## RPS Service:
+- Join a match using a player name  
+- Play moves (ROCK, PAPER, SCISSORS)  
+- Retrieve match status using match ID  
+
+All services communicate over gRPC using structured request/response messages.
+
+---
+
+## Requirements Fulfilled
+
+The following requirements were implemented:
+
+- Unary RPC services (Echo, Joke, Converter, Library operations)  
+- Stateful server-side service (RPS match tracking system)  
+- Persistent storage using file I/O (Library service)  
+- Service discovery using Registry server  
+- Multiple service registration and lookup  
+- Bidirectional interaction between client and server   
+
+---
+
+## Screencast
+
+A screencast is included demonstrating:
+
+- Running the Registry server  
+- Starting the node with services  
+- Running the client  
+- Using each service (Echo, Joke, Converter, Library, RPS)   
