@@ -21,15 +21,18 @@ public class Client {
     private final RegistryGrpc.RegistryBlockingStub blockingStub3;
     private final RegistryGrpc.RegistryBlockingStub blockingStub4;
     private final RPSGrpc.RPSBlockingStub blockingStub5;
+    private final ConverterGrpc.ConverterBlockingStub blockingStub6;
 
     /** Construct client for accessing server using the existing channel. */
     public Client(Channel channel, Channel regChannel) {
-        blockingStub = EchoGrpc.newBlockingStub(channel);
+        blockingStub  = EchoGrpc.newBlockingStub(channel);
         blockingStub2 = JokeGrpc.newBlockingStub(channel);
         blockingStub3 = RegistryGrpc.newBlockingStub(regChannel);
         blockingStub4 = RegistryGrpc.newBlockingStub(channel);
         blockingStub5 = RPSGrpc.newBlockingStub(channel);
+        blockingStub6 = ConverterGrpc.newBlockingStub(channel);
     }
+
 
     /** Construct client for accessing server using the existing channel. */
     public Client(Channel channel) {
@@ -38,6 +41,7 @@ public class Client {
         blockingStub3 = null;
         blockingStub4 = null;
         blockingStub5 = RPSGrpc.newBlockingStub(channel);
+        blockingStub6 = ConverterGrpc.newBlockingStub(channel);
     }
 
     public void askServerToParrot(String message) {
@@ -193,6 +197,38 @@ public class Client {
         }
     }
 
+    // ===========================
+    // RPS CONVERT METHOD
+    // ===========================
+    public void convertValue(double value, String from, String to) {
+
+        ConversionRequest request = ConversionRequest.newBuilder()
+                .setValue(value)
+                .setFromUnit(from)
+                .setToUnit(to)
+                .build();
+
+        try {
+            ConversionResponse response = blockingStub6.convert(request);
+
+            if (response.getIsSuccess()) {
+                System.out.println("Converted value: " + response.getResult());
+            } else {
+                System.out.println("Conversion error: " + response.getError());
+            }
+
+        } catch (Exception e) {
+            System.err.println("RPC failed: " + e.getMessage());
+        }
+    }
+    // ===== END CONVERT METHOD =======
+
+
+    /**
+     * Main method
+     * @param args
+     * @throws Exception
+     */
     public static void main(String[] args) throws Exception {
         if (args.length != 6) {
             System.out
@@ -222,112 +258,171 @@ public class Client {
         ManagedChannel regChannel = ManagedChannelBuilder.forTarget(regTarget)
                 .usePlaintext().build();
 
-        try {
-
-        // ##############################################################################
-        // ## Assume we know the port here from the service node it is basically set through Gradle
-        // here.
-        // In your version you should first contact the registry to check which services
-        // are available and what the port
-        // etc is.
-
-        /**
-         * Your client should start off with
-         * 1. contacting the Registry to check for the available services
-         * 2. List the services in the terminal and the client can
-         *    choose one (preferably through numbering)
-         * 3. Based on what the client chooses
-         *    the terminal should ask for input, eg. a new sentence, a sorting array or
-         *    whatever the request needs
-         * 4. The request should be sent to one of the
-         *    available services (client should call the registry again and ask for a
-         *    Server providing the chosen service) should send the request to this service and
-         *    return the response in a good way to the client
-         *
-         * You should make sure your client does not crash in case the service node
-         * crashes or went offline.
-         */
-
-        // Just doing some hard coded calls to the service node without using the
-        // registry
-        // create client
-        Client client = new Client(channel, regChannel);
-
-        // call the parrot service on the server
-        client.askServerToParrot(message);
-
-        // ask the user for input how many jokes the user wants
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 
-        // ===========================
-        // RPS GAME (ADDED - TASK 2)
-        // ===========================
+        try {
 
-        System.out.println("\n=== RPS GAME ===");
+            // ##############################################################################
+            // ## Assume we know the port here from the service node it is basically set through Gradle
+            // here.
+            // In your version you should first contact the Registry to check which services
+            // are available and what the port etc is.
 
-        System.out.println("Enter your name:");
-        String player = reader.readLine();
+            /**
+             * Your client should start off with
+             * 1. contacting the Registry to check for the available services
+             * 2. List the services in the terminal and the client can
+             *    choose one (preferably through numbering)
+             * 3. Based on what the client chooses
+             *    the terminal should ask for input
+             * 4. The request should be sent to the selected service
+             *    and return response in a clean way
+             */
 
-        client.joinMatch(player);
+            Client client = new Client(channel, regChannel);
 
-        System.out.println("Enter match ID:");
-        String matchId = reader.readLine();
+            // call the parrot service on the server
+            client.askServerToParrot(message);
 
-        System.out.println("Choose move (ROCK, PAPER, SCISSORS):");
-            String move = reader.readLine().trim().toUpperCase();
+            // ===========================
+            // MENU SYSTEM (TASK 1 FIX)
+            // ===========================
+            while (true) {
 
-            client.playMove(matchId, player, Choice.valueOf(move.trim().toUpperCase()));
+                System.out.println("\n================ MENU ================");
+                System.out.println("1. Echo (Parrot)");
+                System.out.println("2. Joke Service");
+                System.out.println("3. Converter Service");
+                System.out.println("4. RPS Game");
+                System.out.println("5. Registry Calls");
+                System.out.println("6. Exit");
+                System.out.println("=====================================");
+                System.out.print("Choose option: ");
 
-        client.getStatus(matchId);
+                String choice = reader.readLine();
 
-        // Reading data using readLine
-        System.out.println("How many jokes would you like?"); // NO ERROR handling of wrong input here.
-        String num = reader.readLine();
+                switch (choice) {
 
-        // calling the joked service from the server with num from user input
-        client.askForJokes(Integer.valueOf(num));
+                    // --------------------------
+                    // ECHO SERVICE
+                    // --------------------------
+                    case "1":
+                        System.out.print("Enter message: ");
+                        String msg = reader.readLine();
+                        client.askServerToParrot(msg);
+                        break;
 
-        // adding a joke to the server
-        client.setJoke("I made a pencil with two erasers. It was pointless.");
+                    // --------------------------
+                    // JOKE SERVICE
+                    // --------------------------
+                    case "2":
+                        System.out.println("\n=== JOKE SERVICE ===");
 
-        // showing 6 joked
-        client.askForJokes(Integer.valueOf(6));
+                        System.out.print("How many jokes would you like? ");
+                        String num = reader.readLine();
 
-        // list all the services that are implemented on the node that this client is connected to
+                        // calling the joke service from the server with num from user input
+                        client.askForJokes(Integer.valueOf(num));
 
-        System.out.println("Services on the connected node. (without registry)");
-        client.getNodeServices(); // get all registered services
+                        // adding a joke to the server
+                        client.setJoke("I made a pencil with two erasers. It was pointless.");
 
-        // ############### Contacting the registry just so you see how it can be done
+                        // showing 6 jokes (as required by assignment sample code)
+                        client.askForJokes(6);
 
-        if (args[5].equals("true")) {
-            // Comment these last Service calls while in Activity 1 Task 1, they are not needed and wil throw issues without the Registry running
-            // get thread's services
-            client.getServices(); // get all registered services
+                        // list all services on node (without registry)
+                        System.out.println("\nServices on the connected node (without registry):");
+                        client.getNodeServices();
 
-            // get parrot
-            client.findServer("services.Echo/parrot"); // get ONE server that provides the parrot service
+                        break;
 
-            // get all setJoke
-            client.findServers("services.Joke/setJoke"); // get ALL servers that provide the setJoke service
+                    // --------------------------
+                    // CONVERTER SERVICE
+                    // --------------------------
+                    case "3":
+                        System.out.println("\n=== CONVERTER SERVICE ===");
 
-            // get getJoke
-            client.findServer("services.Joke/getJoke"); // get ALL servers that provide the getJoke service
+                        System.out.print("Enter value: ");
+                        double value = Double.parseDouble(reader.readLine());
 
-            // does not exist
-            client.findServer("random"); // shows the output if the server does not find a given service
-        }
+                        System.out.print("Enter from unit (KILOMETER, MILE, CELSIUS, etc): ");
+                        String from = reader.readLine().trim().toUpperCase();
 
-    } finally {
-        // ManagedChannels use resources like threads and TCP connections. To prevent
-        // leaking these
-        // resources the channel should be shut down when it will no longer be used. If
-        // it may be used
-        // again leave it running.
-        channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
-        if (args[5].equals("true")) {
-            regChannel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
+                        System.out.print("Enter to unit: ");
+                        String to = reader.readLine().trim().toUpperCase();
+
+                        client.convertValue(value, from, to);
+                        break;
+
+                    // --------------------------
+                    // RPS GAME
+                    // --------------------------
+                    case "4":
+                        System.out.println("\n=== RPS GAME ===");
+
+                        System.out.print("Enter player name: ");
+                        String player = reader.readLine();
+
+                        client.joinMatch(player);
+
+                        System.out.print("Enter match ID: ");
+                        String matchId = reader.readLine();
+
+                        System.out.print("Move (ROCK, PAPER, SCISSORS): ");
+                        String move = reader.readLine().trim().toUpperCase();
+
+                        client.playMove(matchId, player, Choice.valueOf(move));
+
+                        client.getStatus(matchId);
+                        break;
+
+                    // --------------------------
+                    // REGISTRY TESTING
+                    // --------------------------
+                    case "5":
+
+                        if (args[5].equals("true")) {
+
+                            System.out.println("\n=== REGISTRY SERVICES ===");
+
+                            // get thread's services
+                            client.getServices();
+
+                            // get parrot
+                            client.findServer("services.Echo/parrot");
+
+                            // get all setJoke
+                            client.findServers("services.Joke/setJoke");
+
+                            // get getJoke
+                            client.findServer("services.Joke/getJoke");
+
+                            // does not exist (test error handling)
+                            client.findServer("random");
+
+                        } else {
+                            System.out.println("Registry disabled (regOn=false)");
+                        }
+
+                        break;
+
+                    // --------------------------
+                    // EXIT
+                    // --------------------------
+                    case "6":
+                        System.out.println("Exiting client...");
+                        return;
+
+                    default:
+                        System.out.println("Invalid option. Try again.");
+                }
+            }
+
+        } finally {
+            channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
+            if (args[5].equals("true")) {
+                regChannel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
+            }
         }
     }
-  }
 }

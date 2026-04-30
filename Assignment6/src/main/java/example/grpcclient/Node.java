@@ -38,6 +38,7 @@ public class Node {
         .addService(new EchoImpl())
         .addService(new JokeImpl())
             .addService(new RPSImpl())
+            .addService(new ConverterImpl())
             .addService(new RegistryAnswerImpl(services))
             .build()
             .start();
