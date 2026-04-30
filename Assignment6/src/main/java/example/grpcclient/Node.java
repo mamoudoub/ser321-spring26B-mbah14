@@ -37,7 +37,10 @@ public class Node {
     server = ServerBuilder.forPort(port)
         .addService(new EchoImpl())
         .addService(new JokeImpl())
-        .addService(new RegistryAnswerImpl(services)).build().start();
+            .addService(new RPSImpl())
+            .addService(new RegistryAnswerImpl(services))
+            .build()
+            .start();
 
     for (var service : server.getServices()) {
       // returns the services that are available from this node

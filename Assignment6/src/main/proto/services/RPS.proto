@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+// Java-specific options (same style as instructor example)
+option java_multiple_files = true;
+option java_package = "service";
+option java_outer_classname = "RPSProto";
+
+// Package name
+package services;
+
+// Rock-Paper-Scissors service definition
+service RPS {
+
+  // Join the matchmaking queue
+  // Returns a match ID when another player is found
+  rpc joinMatch (JoinReq) returns (JoinRes) {}
+
+  // Submit a move (rock, paper, or scissors)
+  // Server processes the move and returns the round result
+  rpc playMove (MoveReq) returns (MoveRes) {}
+
+  // Get the current status of a match
+  // Useful for checking scores or game progress
+  rpc getStatus (StatusReq) returns (StatusRes) {}
+}
+
+// =====================
+// Request/Response Messages
+// =====================
+
+// Request to join a match
+message JoinReq {
+  string player_name = 1;   // Name of the player joining
+}
+
+// Response after attempting to join a match
+message JoinRes {
+  string match_id = 1;      // Unique match identifier
+  string message = 2;       // Status message (e.g., "Waiting for opponent", "Match found")
+}
+
+// Request to play a move
+message MoveReq {
+  string match_id = 1;      // Match identifier
+  string player_name = 2;   // Player making the move
+  Choice choice = 3;        // Player's move (rock, paper, or scissors)
+}
+
+// Response after a move is played
+message MoveRes {
+  string result = 1;        // Result of the round ("win", "lose", "draw")
+  int32 player_score = 2;   // Player's current score
+  int32 opponent_score = 3; // Opponent's current score
+  bool game_over = 4;       // True if the match is finished
+  string message = 5;       // Additional info (e.g., "Round 2 complete")
+
+  repeated string round_summary = 6; // History of round results
+}
+
+// Request to check match status
+message StatusReq {
+  string match_id = 1;      // Match identifier
+}
+
+// Response containing match status
+message StatusRes {
+  int32 player_score = 1;   // Player's score
+  int32 opponent_score = 2; // Opponent's score
+  bool game_over = 3;       // Whether the match is finished
+  string status = 4;        // Status message (e.g., "Waiting for move", "In progress")
+
+  repeated string move_history = 5; // History of moves in the match
+}
+
+// Enum representing possible moves
+enum Choice {
+  ROCK = 0;
+  PAPER = 1;
+  SCISSORS = 2;
+}

@@ -67,3 +67,58 @@ The tests connect to localhost:8000 by default.
 To run in IDE:
 - go about it like in the ProtoBuf assignment to get rid of errors
 - all mains expect input, so if you want to run them in your IDE you need to provide the inputs for them, see build.gradle
+
+The RPS service demonstrates stateful communication, persistent server-side data storage, and multi-request interaction between client and server.
+
+---
+
+## Service: Rock-Paper-Scissors (RPS)
+
+The RPS service allows players to join a match, play rounds against a server-controlled opponent, and track match progress.
+
+### Supported RPC Methods
+
+- `joinMatch(JoinReq) ==> JoinRes`
+- `playMove(MoveReq) ==> MoveRes`
+- `getStatus(StatusReq) ==> StatusRes`
+
+---
+
+## Features
+
+### Multiple Requests Supported
+
+The service includes three RPC calls:
+
+- Join a match
+- Play a move
+- Retrieve match status
+
+---
+
+### Input Requirements
+
+Each request requires input:
+
+- `joinMatch` ==> player name
+- `playMove` ==> match ID, player name, move (ROCK / PAPER / SCISSORS)
+- `getStatus` ==> match ID
+
+---
+
+### Different Responses Per Request
+
+Each RPC returns different structured responses:
+
+- `JoinRes` ==> match ID + confirmation message
+- `MoveRes` ==> round result, score updates, and game status
+- `StatusRes` ==> current match state and scores
+
+---
+
+### Repeated Field Usage (Requirement Fulfilled)
+
+The server maintains a persistent history of game rounds using:
+
+```proto
+repeated string round_summary = 6;
