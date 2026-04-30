@@ -22,6 +22,7 @@ public class Client {
     private final RegistryGrpc.RegistryBlockingStub blockingStub4;
     private final RPSGrpc.RPSBlockingStub blockingStub5;
     private final ConverterGrpc.ConverterBlockingStub blockingStub6;
+    private final LibraryGrpc.LibraryBlockingStub blockingStub7;
 
     /** Construct client for accessing server using the existing channel. */
     public Client(Channel channel, Channel regChannel) {
@@ -31,6 +32,7 @@ public class Client {
         blockingStub4 = RegistryGrpc.newBlockingStub(channel);
         blockingStub5 = RPSGrpc.newBlockingStub(channel);
         blockingStub6 = ConverterGrpc.newBlockingStub(channel);
+        blockingStub7 = LibraryGrpc.newBlockingStub(channel);
     }
 
 
@@ -42,6 +44,7 @@ public class Client {
         blockingStub4 = null;
         blockingStub5 = RPSGrpc.newBlockingStub(channel);
         blockingStub6 = ConverterGrpc.newBlockingStub(channel);
+        blockingStub7 = LibraryGrpc.newBlockingStub(channel);
     }
 
     public void askServerToParrot(String message) {
@@ -221,8 +224,99 @@ public class Client {
             System.err.println("RPC failed: " + e.getMessage());
         }
     }
-    // ===== END CONVERT METHOD =======
 
+    // ===========================
+    // LIBRARYIMPL METHODS
+    // ===========================
+    //LIST BOOKS
+    public void listBooks() {
+        try {
+            BookListResponse response =
+                    blockingStub7.listBooks(com.google.protobuf.Empty.newBuilder().build());
+
+            if (!response.getIsSuccess()) {
+                System.out.println("Error: " + response.getError());
+                return;
+            }
+
+            System.out.println("\n=== BOOK LIST ===");
+            for (Book b : response.getBooksList()) {
+                System.out.println(b.getTitle() + " | " + b.getAuthor()
+                        + " | ISBN: " + b.getIsbn()
+                        + " | Borrowed: " + b.getIsBorrowed()
+                        + " | By: " + b.getBorrowedBy()
+                        + " | Due: " + b.getReturnBy());
+            }
+
+        } catch (Exception e) {
+            System.err.println("RPC failed: " + e.getMessage());
+        }
+    }
+
+    // SEARCH BOOKS
+    public void searchBooks(String query) {
+        try {
+            BookSearchRequest request =
+                    BookSearchRequest.newBuilder().setQuery(query).build();
+
+            BookListResponse response = blockingStub7.searchBooks(request);
+
+            if (!response.getIsSuccess()) {
+                System.out.println("Error: " + response.getError());
+                return;
+            }
+
+            System.out.println("\n=== SEARCH RESULTS ===");
+            for (Book b : response.getBooksList()) {
+                System.out.println(b.getTitle() + " | " + b.getAuthor()
+                        + " | ISBN: " + b.getIsbn());
+            }
+
+        } catch (Exception e) {
+            System.err.println("RPC failed: " + e.getMessage());
+        }
+    }
+
+    // BORROW BOOK
+    public void borrowBook(String isbn, String borrower) {
+        try {
+            BorrowRequest request = BorrowRequest.newBuilder()
+                    .setIsbn(isbn)
+                    .setBorrowerName(borrower)
+                    .build();
+
+            BorrowResponse response = blockingStub7.borrowBook(request);
+
+            if (response.getIsSuccess()) {
+                System.out.println("SUCCESS: " + response.getMessage());
+            } else {
+                System.out.println("ERROR: " + response.getError());
+            }
+
+        } catch (Exception e) {
+            System.err.println("RPC failed: " + e.getMessage());
+        }
+    }
+
+    // RETURN BOOK
+    public void returnBook(String isbn) {
+        try {
+            ReturnRequest request = ReturnRequest.newBuilder()
+                    .setIsbn(isbn)
+                    .build();
+
+            ReturnResponse response = blockingStub7.returnBook(request);
+
+            if (response.getIsSuccess()) {
+                System.out.println("SUCCESS: " + response.getMessage());
+            } else {
+                System.out.println("ERROR: " + response.getError());
+            }
+
+        } catch (Exception e) {
+            System.err.println("RPC failed: " + e.getMessage());
+        }
+    }
 
     /**
      * Main method
@@ -295,7 +389,8 @@ public class Client {
                 System.out.println("3. Converter Service");
                 System.out.println("4. RPS Game");
                 System.out.println("5. Registry Calls");
-                System.out.println("6. Exit");
+                System.out.println("6. Library Service");
+                System.out.println("7. Exit");
                 System.out.println("=====================================");
                 System.out.print("Choose option: ");
 
@@ -407,9 +502,58 @@ public class Client {
                         break;
 
                     // --------------------------
-                    // EXIT
+                    // LIBRARY SERVICE
                     // --------------------------
                     case "6":
+                        System.out.println("\n=== LIBRARY SERVICE ===");
+                        System.out.println("1. List books");
+                        System.out.println("2. Search books");
+                        System.out.println("3. Borrow book");
+                        System.out.println("4. Return book");
+                        System.out.println("5. Back");
+
+                        String libChoice = reader.readLine();
+
+                        switch (libChoice) {
+
+                            case "1":
+                                client.listBooks();
+                                break;
+
+                            case "2":
+                                System.out.print("Enter search query: ");
+                                String q = reader.readLine();
+                                client.searchBooks(q);
+                                break;
+
+                            case "3":
+                                System.out.print("Enter ISBN: ");
+                                String isbn = reader.readLine();
+
+                                System.out.print("Enter your name: ");
+                                String name = reader.readLine();
+
+                                client.borrowBook(isbn, name);
+                                break;
+
+                            case "4":
+                                System.out.print("Enter ISBN: ");
+                                String rid = reader.readLine();
+                                client.returnBook(rid);
+                                break;
+
+                            case "5":
+                                break;
+
+                            default:
+                                System.out.println("Invalid library option");
+                        }
+                        break;
+
+                    // --------------------------
+                    // EXIT
+                    // --------------------------
+                    case "7":
                         System.out.println("Exiting client...");
                         return;
 

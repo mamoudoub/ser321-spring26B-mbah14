@@ -1,0 +1,3 @@
+Clean Code|Robert Martin|1111
+Design Patterns|GoF|2222
+Java Concurrency|Brian Goetz|3333

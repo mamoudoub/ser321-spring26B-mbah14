@@ -37,8 +37,18 @@ public class Node {
     server = ServerBuilder.forPort(port)
         .addService(new EchoImpl())
         .addService(new JokeImpl())
-            .addService(new RPSImpl())
+
+            // ===========================
+            // ADDED SERVICES (TASK 1)
+            // ===========================
             .addService(new ConverterImpl())
+            .addService(new LibraryImpl())
+
+            // ===========================
+            // ADDED SERVICES (TASK 2)
+            // ===========================
+            .addService(new RPSImpl())
+
             .addService(new RegistryAnswerImpl(services))
             .build()
             .start();
